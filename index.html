@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contador de Dinero</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+   <style>
+    body {
+        background-image: url('./istockphoto-1385227625-612x612.jpg'); /* <-- ¡Cambia esto por la URL de tu imagen! */
+        background-size: cover; /* Asegura que la imagen cubra todo el viewport */
+        background-position: center center; /* Centra la imagen */
+        background-repeat: no-repeat; /* Evita que la imagen se repita */
+        background-attachment: fixed; /* Mantiene la imagen fija al hacer scroll */
+
+        /* Puedes añadir un color de fondo de respaldo si la imagen no carga */
+        background-color: #f0f0f0; 
+    }
+    .container {
+        padding: 20px;
+        /* Para que el contenido sea más legible sobre la imagen de fondo,
+           puedes darle un fondo semi-transparente al contenedor principal. */
+        background-color: rgba(255, 255, 255, 0.60); /* Fondo blanco con 85% de opacidad */
+        border-radius: 8px; /* Bordes redondeados */
+        box-shadow: 0 0.5em 1em -0.125em rgba(10, 10, 10, 0.1), 0 0px 0 1px rgba(10, 10, 10, 0.02);
+    }
+    .dinero-item {
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background-color: white; /* Mantener el fondo blanco para los items individuales */
+        padding: 10px;
+        border-radius: 4px;
+        box-shadow: 0 0.125em 0.25em rgba(10, 10, 10, 0.05);
+    }
+    .dinero-item .valor-display {
+        font-size: 1.2em;
+        font-weight: bold;
+        flex-shrink: 0;
+        width: 50px;
+        text-align: right;
+    }
+    .dinero-item .input-cantidad {
+        width: 70px;
+        text-align: center;
+        flex-shrink: 0;
+    }
+    .dinero-item .multiplicar-arrow {
+        font-size: 1.5em;
+        color: #ccc;
+        flex-shrink: 0;
+    }
+    .dinero-item .resultado-parcial {
+        font-weight: bold;
+        color: #363636;
+        flex-grow: 1;
+        text-align: left;
+    }
+    .total-box {
+        padding: 20px;
+        margin-top: 20px;
+        background-color: #f0f0f0; /* Fondo del cuadro total */
+        border-top: 2px solid #dbdbdb; 
+        text-align: right;
+        font-size: 1.8em;
+        font-weight: bold;
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1 class="title is-2 has-text-centered mb-5">Contador de Monedas y Billetes </h1>
+
+    <div class="columns is-multiline is-centered">
+        
+        <div class="column is-full-mobile is-half-tablet is-4-desktop">
+            <h2 class="title is-4 has-text-centered">Monedas</h2>
+            <div id="monedas-container">
+                </div>
+        </div>
+
+        <div class="column is-full-mobile is-half-tablet is-4-desktop">
+            <h2 class="title is-4 has-text-centered">Billetes</h2>
+            <div id="billetes-container">
+                </div>
+        </div>
+
+       <div class="column is-full-mobile is-full-tablet is-4-desktop">
+            <h2 class="title is-4 has-text-centered">Total General</h2>
+            <div class="box total-box">
+                <span id="total-general">$0.00</span>
+            </div>
+            <button class="button is-primary is-fullwidth mt-3" onclick="calcularTotal()">
+                Actualizar Total
+            </button>
+            
+            <button class="button is-danger is-fullwidth mt-2" onclick="reiniciarContador()">
+                 Eliminar Todo
+            </button>
+
+        </div>
+    </div>
+</div>
+  
+</div>
+<script>
+  // Valores de Monedas y Billetes
+const valoresMonedas = [1, 2, 5, 10, 20];
+const valoresBilletes = [20, 50, 100, 200, 500, 1000];
+
+// Contenedores
+const monedasContainer = document.getElementById('monedas-container');
+const billetesContainer = document.getElementById('billetes-container');
+const totalGeneralElement = document.getElementById('total-general');
+
+// Función para crear un elemento de dinero (Moneda o Billete) con la estructura de la imagen
+function crearElementoDinero(valor, contenedor) {
+    const idValor = `input-${valor}`; // ID para el input
+    const idResultado = `resultado-${valor}`; // ID para el resultado parcial
+    
+    // Contenedor principal para la fila de dinero
+    const divItem = document.createElement('div');
+    divItem.className = 'dinero-item';
+    
+    // 1. Mostrar el valor del billete/moneda ($1, $2, etc.)
+    const valorDisplay = document.createElement('span');
+    valorDisplay.className = 'valor-display';
+    valorDisplay.textContent = `\$${valor}`;
+    divItem.appendChild(valorDisplay);
+
+    // 2. Campo de entrada para la cantidad
+    const input = document.createElement('input');
+    input.className = 'input input-cantidad is-small'; // Clases de Bulma y nuestra personalizada
+    input.type = 'number';
+    input.min = '0';
+    input.value = '0';
+    input.id = idValor;
+    input.dataset.valor = valor; // Almacena el valor nominal
+    
+    // Event listener para actualizar automáticamente (multiplicar y total)
+    input.addEventListener('input', () => {
+        multiplicar(valor, idValor, idResultado);
+    });
+    divItem.appendChild(input);
+
+    // 3. Flecha como separador
+    const arrow = document.createElement('span');
+    arrow.className = 'multiplicar-arrow';
+    arrow.textContent = '→'; // Carácter de flecha
+    divItem.appendChild(arrow);
+    
+    // 4. Resultado de la multiplicación
+    const resultado = document.createElement('span');
+    resultado.className = 'resultado-parcial'; 
+    resultado.id = idResultado;
+    resultado.textContent = `\$0.00`; // Inicialmente en cero
+    divItem.appendChild(resultado);
+
+    contenedor.appendChild(divItem);
+}
+
+// 1. Multiplica el valor nominal por la cantidad ingresada y actualiza el resultado parcial
+function multiplicar(valorNominal, idInput, idResultado) {
+    const cantidad = parseInt(document.getElementById(idInput).value) || 0;
+    const totalParcial = valorNominal * cantidad;
+    document.getElementById(idResultado).textContent = `\$${totalParcial.toFixed(2)}`;
+    
+    // Después de cada multiplicación parcial, recalcula el total general
+    calcularTotal(); 
+}
+
+// 2. Calcula y muestra el total general de todo el dinero
+function calcularTotal() {
+    let totalGeneral = 0;
+    
+    // Selecciona todos los inputs que hemos generado para dinero
+    const inputsDinero = document.querySelectorAll('.dinero-item .input-cantidad');
+    
+    inputsDinero.forEach(input => {
+        const valorNominal = parseInt(input.dataset.valor);
+        const cantidad = parseInt(input.value) || 0;
+        const totalParcial = valorNominal * cantidad;
+        totalGeneral += totalParcial;
+    });
+    
+    totalGeneralElement.textContent = `\$${totalGeneral.toFixed(2)}`;
+}
+
+// 3. Restablece todos los campos a cero y actualiza el total.
+function reiniciarContador() {
+    // 1. Selecciona todos los inputs de cantidad y los restablece a '0'
+    const inputsDinero = document.querySelectorAll('.dinero-item .input-cantidad');
+    inputsDinero.forEach(input => {
+        input.value = '0';
+    });
+    
+    // 2. Restablecer visualmente los resultados parciales a $0.00:
+    const resultadosParciales = document.querySelectorAll('.resultado-parcial');
+    resultadosParciales.forEach(resultado => {
+        resultado.textContent = '$0.00';
+    });
+    
+    // 3. Restablecer el total general
+    totalGeneralElement.textContent = '$0.00';
+    
+    console.log("Contador Reiniciado.");
+}
+
+// ******* Inicialización *******
+
+// Generar los elementos al cargar la página
+valoresMonedas.forEach(valor => crearElementoDinero(valor, monedasContainer));
+valoresBilletes.forEach(valor => crearElementoDinero(valor, billetesContainer));
+
+// Calcular el total inicial (debería ser $0.00)
+calcularTotal();
+</script>
+</body>
+</html>
